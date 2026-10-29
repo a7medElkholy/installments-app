@@ -1,0 +1,23 @@
+:root{--bg:#f5f6f8;--card:#fff;--tx:#1b1f24;--mu:#667085;--bd:#e3e6ea;--pr:#0f766e;--rd:#c0262d;--rdb:#fde8e8;--or:#8a5006;--orb:#fff1d6;--gr:#17803d;--grb:#e0f5e7;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#14171a;--card:#1d2125;--tx:#e8eaed;--mu:#9aa3ad;--bd:#2c3238;--pr:#2dd4bf;--rd:#ff8a8f;--rdb:#3a1d1f;--or:#f5b95a;--orb:#3a2c12;--gr:#6ee79a;--grb:#13301e;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:"Segoe UI",Tahoma,Arial,sans-serif;font-size:15px}
+.wrap{max-width:900px;margin:0 auto;padding:12px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0}
+h1{font-size:18px;margin:0}h2{font-size:16px;margin:0 0 8px}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+button{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 12px;border-radius:8px;cursor:pointer}
+button.p{background:var(--pr);color:var(--bg);border-color:var(--pr)}button.on{border-color:var(--pr);color:var(--pr);font-weight:700}
+button.sm{padding:5px 9px;font-size:13px}button:disabled{opacity:.5}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.stat b{display:block;font-size:20px;margin-top:4px}.mu{color:var(--mu);font-size:13px}
+input{font:inherit;width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
+label{display:block;font-size:13px;color:var(--mu);margin:8px 0 3px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px}
+.late{background:var(--rdb);color:var(--rd)}.soon{background:var(--orb);color:var(--or)}.ok{background:var(--grb);color:var(--gr)}.nx{background:var(--bd);color:var(--mu)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--bd);flex-wrap:wrap}
+.row:last-child{border:0}.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px;min-width:580px}
+th,td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--bd)}td input{width:90px;padding:5px}
+.bar{height:8px;background:var(--bd);border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;background:var(--pr)}
+.login{max-width:340px;margin:12vh auto}.err{color:var(--rd);font-size:13px;min-height:18px}
