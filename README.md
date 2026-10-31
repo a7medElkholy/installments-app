@@ -24,3 +24,6 @@ npm run dev
 ## تحديث (النسبة والتقارير)
 لو كنت شغّلت `schema.sql` القديم قبل كده: شغّل `supabase/migration_interest.sql` مرة واحدة من SQL Editor (بيحافظ على بياناتك).
 لو بتبدأ من الصفر: `schema.sql` الجديد كفاية.
+
+## تحديث (تعديل العميل)
+شغّل `supabase/migration_edit.sql` مرة واحدة من SQL Editor (مضاف أيضًا في schema.sql للبدء من الصفر).

@@ -70,7 +70,7 @@ function Main(){
     <nav className="noprint">{tabs.map(([k,t])=><button key={k} className={view===k?'on':''} onClick={()=>setView(k)}>{t}</button>)}</nav>
     {err&&<div className="card err">{err}</div>}
     {view==='dash'&&<><div className="grid">
-      <Stat l="العملاء" v={cs.length}/><Stat l="إجمالي المتبقي" v={mon(cs.reduce((s,c)=>s+remOf(c),0))}/>
+      <Stat l="العملاء" v={cs.length}/><Stat l="إجمالي المدفوع" v={mon(cs.reduce((s,c)=>s+c.total-remOf(c),0))} c="var(--gr)"/><Stat l="إجمالي المتبقي" v={mon(cs.reduce((s,c)=>s+remOf(c),0))}/>
       <Stat l="أقساط متأخرة" v={late.length} c="var(--rd)"/><Stat l="تستحق خلال 5 أيام" v={soon.length} c="var(--or)"/></div>
       <div style={{height:10}}/><Alerts late={late} soon={soon} open={open}/></>}
     {view==='notif'&&<Alerts late={late} soon={soon} open={open}/>}
@@ -79,7 +79,7 @@ function Main(){
         const n=nextInst(c),p=100-remOf(c)/c.total*100
         return <div className="row" key={c.id} style={{cursor:'pointer'}} onClick={()=>open(c.id)}>
           <div><b>{c.name}</b><div className="mu">{c.phone}{n?' · القسط القادم '+n.due_date:' · مسدد بالكامل'}</div></div>
-          <div style={{minWidth:130}}><b>{mon(remOf(c))}</b><div className="bar"><i style={{width:p+'%'}}/></div></div></div>
+          <div style={{minWidth:150}}><div className="mu">مدفوع {mon(c.total-remOf(c))}</div><b>متبقي {mon(remOf(c))}</b><div className="bar"><i style={{width:p+'%'}}/></div></div></div>
       })}{!cs.length&&<p className="mu">لا يوجد عملاء.</p>}</div></>}
     {view==='rep'&&<Report cs={cs}/>}
     {view==='add'&&<AddForm done={async id=>{await load();open(id)}}/>}
@@ -188,7 +188,7 @@ function Receipt({p,c,log,close}){
 }
 
 function Detail({c,back,reload}){
-  const [amt,setAmt]=useState({});const [log,setLog]=useState([]);const [rc,setRc]=useState(null)
+  const [amt,setAmt]=useState({});const [log,setLog]=useState([]);const [rc,setRc]=useState(null);const [editing,setEditing]=useState(false)
   const cid=c?.id
   const loadLog=useCallback(async()=>{
     if(!cid)return[]
@@ -198,6 +198,7 @@ function Detail({c,back,reload}){
   useEffect(()=>{loadLog()},[loadLog])
   if(!c)return <button className="sm" onClick={back}>رجوع</button>
   if(rc)return <Receipt p={rc} c={c} log={log} close={()=>setRc(null)}/>
+  if(editing)return <EditForm c={c} close={()=>setEditing(false)} done={async()=>{await reload();setEditing(false)}}/>
   const seqOf=id=>c.installments.find(i=>i.id===id)?.seq
   const lastPay=id=>{const l=log.find(x=>x.installment_id===id);return l?new Date(l.paid_at).toLocaleDateString('en-GB'):'—'}
   async function pay(i){
@@ -230,5 +231,36 @@ function Detail({c,back,reload}){
     <div className="card"><h2>سجل الدفعات</h2>
       {log.map(l=><div className="row" key={l.id}><span>{new Date(l.paid_at).toLocaleDateString('en-GB')} · قسط {seqOf(l.installment_id)}</span><span><b>{mon(l.amount)}</b> <button className="sm noprint" onClick={()=>setRc(l)}>فاتورة</button></span></div>)}
       {!log.length&&<p className="mu">لا توجد دفعات بعد.</p>}</div>
-    <button className="noprint" onClick={del} style={{color:'var(--rd)'}}>حذف العميل</button></>
+    <div className="noprint"><button onClick={()=>setEditing(true)}>تعديل العميل</button> <button onClick={del} style={{color:'var(--rd)'}}>حذف العميل</button></div></>
+}
+
+function EditForm({c,close,done}){
+  const unpaid=c.installments.filter(i=>left(i)>0.005)
+  const paidSum=c.installments.reduce((t,i)=>t+Number(i.paid),0)
+  const [f,setF]=useState({name:c.name,phone:c.phone||'',principal:String(c.principal),rate:String(c.rate),down:String(c.down),n:String(unpaid.length||1),start:unpaid[0]?.due_date||nextMonth()})
+  const [busy,setBusy]=useState(false)
+  const set=k=>e=>setF({...f,[k]:e.target.value})
+  const P=+f.principal||0,r=+f.rate||0,d=+f.down||0,n=Math.floor(+f.n)
+  const total=fm(P+P*r/100),rem=fm(total-d-paidSum)
+  async function save(){
+    if(!f.name.trim()||!(P>0)||r<0||!(total>d)||rem<-0.005||(rem>0.005&&(n<1||!f.start))){alert('راجع البيانات (الإجمالي لازم يكون أكبر من المقدم وأكبر من المدفوع)');return}
+    setBusy(true)
+    const {error}=await supabase.rpc('update_customer',{p_id:c.id,p_name:f.name.trim(),p_phone:f.phone.trim(),p_principal:P,p_rate:r,p_down:d,p_n:rem>0.005?n:0,p_start:f.start})
+    setBusy(false)
+    if(error)alert(error.message);else done()
+  }
+  return <div className="card"><h2>تعديل العميل</h2>
+    <p className="mu">الأقساط المدفوعة بتفضل زي ما هي، والمبلغ المتبقي بيتوزع على أقساط جديدة حسب العدد والتاريخ اللي تحدده.</p>
+    <label>اسم العميل</label><input value={f.name} onChange={set('name')}/>
+    <label>رقم الهاتف</label><input inputMode="tel" value={f.phone} onChange={set('phone')}/>
+    <div className="f2">
+      <div><label>المبلغ</label><input type="number" min="0" value={f.principal} onChange={set('principal')}/></div>
+      <div><label>النسبة المضافة (%)</label><input type="number" min="0" step="0.01" value={f.rate} onChange={set('rate')}/></div>
+      <div><label>الإجمالي بعد النسبة</label><input value={P>0?total:''} readOnly/></div>
+      <div><label>المقدم</label><input type="number" min="0" value={f.down} onChange={set('down')}/></div>
+      <div><label>عدد الأقساط المتبقية</label><input type="number" min="1" value={f.n} onChange={set('n')}/></div>
+      <div><label>تاريخ أول قسط جديد</label><input type="date" value={f.start} onChange={set('start')}/></div></div>
+    <p className="mu">المدفوع حتى الآن (شامل المقدم): {mon(d+paidSum)} · المتبقي للتقسيط: {mon(Math.max(rem,0))}{rem>0.005&&n>0?' · القسط الجديد: '+mon(rem/n):''}</p>
+    {rem<-0.005&&<p className="err">الإجمالي الجديد أقل من المبلغ المدفوع بالفعل.</p>}
+    <button className="p" onClick={save} disabled={busy}>حفظ التعديلات</button> <button onClick={close}>إلغاء</button></div>
 }
