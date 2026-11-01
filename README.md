@@ -27,3 +27,8 @@ npm run dev
 
 ## تحديث (تعديل العميل)
 شغّل `supabase/migration_edit.sql` مرة واحدة من SQL Editor (مضاف أيضًا في schema.sql للبدء من الصفر).
+
+## تحديث (المستخدمون والصلاحيات + المنتج + صورة البطاقة)
+1. شغّل `supabase/migration_users.sql` مرة واحدة من SQL Editor (المستخدم الحالي يصير مديرًا تلقائيًا).
+2. انشر دالة إنشاء المستخدمين: من Dashboard اختر Edge Functions ثم Deploy a new function، سمّها `manage-users` والصق محتوى `supabase/functions/manage-users/index.ts`. (أو بالـ CLI: `supabase functions deploy manage-users`).
+3. سجّل دخول بحساب المالك وستجد تبويب "المستخدمون".
