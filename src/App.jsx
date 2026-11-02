@@ -1,6 +1,7 @@
 import {useEffect,useState,useCallback} from 'react'
 import {supabase} from './supabase'
 
+const SHOP='معرض البركة للأجهزة الكهربائية',MGR='إدارة م/ هاني عبدالتواب'
 const fm=n=>Math.round(n*100)/100
 const mon=n=>fm(n).toLocaleString('en-US')+' ج.م'
 const pd=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}
@@ -46,7 +47,7 @@ function Login(){
     if(error)setErr('بيانات الدخول غير صحيحة');setBusy(false)
   }
   return <div className="wrap"><form className="card login" onSubmit={submit}>
-    <h1>تسجيل الدخول</h1>
+    <h1 style={{textAlign:'center'}}>{SHOP}</h1><p className="mu" style={{textAlign:'center',marginTop:2}}>{MGR}</p><h2>تسجيل الدخول</h2>
     <label>البريد الإلكتروني</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="username"/>
     <label>كلمة المرور</label><input type="password" value={pw} onChange={e=>setPw(e.target.value)} required autoComplete="current-password"/>
     <div className="err">{err}</div>
@@ -75,7 +76,7 @@ function Main({me}){
   const tabs=[['dash','الرئيسية'],['notif','الإشعارات'+(nc?` (${nc})`:'')],['cust','العملاء'],can(me,'print')&&['rep','تقارير'],can(me,'add')&&['add','عميل جديد'],me.role==='admin'&&['users','المستخدمون']].filter(Boolean)
 
   return <div className="wrap">
-    <header className="noprint"><h1>نظام إدارة الأقساط</h1><button className="sm" onClick={()=>supabase.auth.signOut()}>خروج</button></header>
+    <header className="noprint"><div><h1>{SHOP}</h1><div className="mu">{MGR}</div></div><button className="sm" onClick={()=>supabase.auth.signOut()}>خروج</button></header>
     <nav className="noprint">{tabs.map(([k,t])=><button key={k} className={view===k?'on':''} onClick={()=>setView(k)}>{t}</button>)}</nav>
     {err&&<div className="card err">{err}</div>}
     {view==='dash'&&<><div className="grid">
@@ -162,7 +163,7 @@ function AddForm({cs,done}){
     <button className="p" onClick={save} disabled={busy}>{busy?'جاري الحفظ...':'حفظ العميل'}</button></div>
 }
 
-const PrintHead=({t})=><div className="printonly"><h1>{t}</h1><div className="mu">تاريخ الطباعة: {new Date().toLocaleDateString('en-GB')}</div><hr/></div>
+const PrintHead=({t})=><div className="printonly"><h1 style={{textAlign:'center'}}>{SHOP}</h1><div className="mu" style={{textAlign:'center'}}>{MGR}</div><h2 style={{textAlign:'center',marginTop:10}}>{t}</h2><div className="mu">تاريخ الطباعة: {new Date().toLocaleDateString('en-GB')}</div><hr/></div>
 
 function custStatus(c){
   let late=0,lateAmt=0,soon=0,soonAmt=0
@@ -212,7 +213,7 @@ function Receipt({p,c,log,close,canPrint}){
   return <>
     <div className="noprint">{canPrint&&<button className="p sm" onClick={()=>window.print()}>طباعة الفاتورة</button>} <button className="sm" onClick={close}>إغلاق</button></div>
     <div className="card receipt" style={{marginTop:8}}>
-      <h1 style={{textAlign:'center'}}>إيصال استلام دفعة</h1>
+      <h1 style={{textAlign:'center'}}>{SHOP}</h1><div className="mu" style={{textAlign:'center'}}>{MGR}</div><h2 style={{textAlign:'center',margin:'10px 0'}}>إيصال استلام دفعة</h2>
       <R l="رقم الإيصال" v={p.id.slice(0,8).toUpperCase()}/>
       <R l="تاريخ الدفع" v={new Date(p.paid_at).toLocaleDateString('en-GB')}/>
       <R l="اسم العميل" v={c.name} b/><R l="الهاتف" v={c.phone||'—'}/><R l="نوع المنتج" v={c.product||'—'}/>
