@@ -3,7 +3,9 @@ import {supabase} from './supabase'
 
 const SHOP='معرض البركة للأجهزة الكهربائية',MGR='إدارة م/ هاني عبدالتواب'
 const fm=n=>Math.round(n*100)/100
-const mon=n=>fm(n).toLocaleString('en-US')+' ج.م'
+let HIDE=false
+const mon=n=>HIDE?'•••':fm(n).toLocaleString('en-US')+' ج.م'
+const wa=t=>window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank')
 const pd=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
 const dd=s=>{const t=new Date();t.setHours(0,0,0,0);return Math.round((pd(s)-t)/864e5)}
@@ -36,6 +38,7 @@ function Gate({uid}){
   useEffect(()=>{supabase.from('profiles').select('*').eq('id',uid).maybeSingle().then(({data})=>setMe(data||null))},[uid])
   if(me===undefined)return null
   if(!me||!me.active)return <div className="wrap"><div className="card login"><h1>الحساب غير مفعّل</h1><p className="mu">تواصل مع المدير.</p><button onClick={()=>supabase.auth.signOut()}>خروج</button></div></div>
+  HIDE=!can(me,'amounts')
   return <Main me={me}/>
 }
 
@@ -89,7 +92,7 @@ function Main({me}){
         const n=nextInst(c),p=100-remOf(c)/c.total*100
         return <div className="row" key={c.id} style={{cursor:'pointer'}} onClick={()=>open(c.id)}>
           <div><b>{c.name}</b><div className="mu">{c.product&&c.product+' · '}{c.phone}{n?' · القسط القادم '+n.due_date:' · مسدد بالكامل'}</div></div>
-          <div style={{minWidth:150}}><div className="mu">مدفوع {mon(c.total-remOf(c))}</div><b>متبقي {mon(remOf(c))}</b><div className="bar"><i style={{width:p+'%'}}/></div></div></div>
+          <div style={{minWidth:150}}><div className="mu">مدفوع {mon(c.total-remOf(c))}</div><b>متبقي {mon(remOf(c))}</b>{!HIDE&&<div className="bar"><i style={{width:p+'%'}}/></div>}</div></div>
       })}{!cs.length&&<p className="mu">لا يوجد عملاء.</p>}</div></>}
     {view==='rep'&&can(me,'print')&&<Report cs={cs}/>}
     {view==='users'&&me.role==='admin'&&<Users me={me}/>}
@@ -187,8 +190,10 @@ function Report({cs}){
   const cnt=k=>rows.filter(r=>r.s.k===k).length
   const tot=f=>cs.reduce((s,c)=>s+f(c),0)
   const from=new Date(Date.now()-7*864e5).toLocaleDateString('en-GB'),to=new Date().toLocaleDateString('en-GB')
+  const L=k=>rows.filter(r=>r.s.k===k)
+  const wtxt=`*${SHOP}*\n${MGR}\n\nالتقرير الأسبوعي (${from} – ${to})\nمتأخرون: ${cnt('late')} | قريبو الاستحقاق: ${cnt('soon')} | منتظمون: ${cnt('ok')}\nالمحصّل: ${mon(week)}\nإجمالي المتبقي: ${mon(tot(remOf))}\n\n🔴 المتأخرون:\n${L('late').map(({c,s})=>`- ${c.name}${c.product?' ('+c.product+')':''}: ${s.late} قسط · ${mon(s.lateAmt)}`).join('\n')||'لا يوجد'}\n\n🟡 خلال 5 أيام:\n${L('soon').map(({c,s})=>`- ${c.name}: ${s.soon} قسط · ${mon(s.soonAmt)}`).join('\n')||'لا يوجد'}`
   return <>
-    <button className="p noprint" onClick={()=>window.print()} style={{marginBottom:10}}>طباعة التقرير الأسبوعي</button>
+    <div className="noprint" style={{marginBottom:10,display:'flex',gap:6,flexWrap:'wrap'}}><button className="p" onClick={()=>window.print()}>طباعة التقرير الأسبوعي</button><PdfBtn className="" name={'التقرير-الأسبوعي-'+to.replace(/\//g,'-')}/><button onClick={()=>wa(wtxt)}>إرسال نص واتساب</button></div>
     <PrintHead t="التقرير الأسبوعي للعملاء"/>
     <div className="grid" style={{marginBottom:10}}>
       <div className="card stat late"><span>متأخرون</span><b>{cnt('late')}</b></div>
@@ -209,9 +214,10 @@ function Receipt({p,c,log,close,canPrint}){
   const i=c.installments.find(x=>x.id===p.installment_id)
   const paidTill=log.filter(x=>x.installment_id===p.installment_id&&x.paid_at<=p.paid_at).reduce((s,x)=>s+Number(x.amount),0)
   const lf=i.amount-paidTill
+  const txt=`*${SHOP}*\n${MGR}\n\nإيصال استلام دفعة\nرقم الإيصال: ${p.id.slice(0,8).toUpperCase()}\nالتاريخ: ${new Date(p.paid_at).toLocaleDateString('en-GB')}\nالعميل: ${c.name}\nنوع المنتج: ${c.product||'—'}\nرقم القسط: ${i.seq} من ${c.installments.length}\nموعد الاستحقاق: ${i.due_date}\nقيمة القسط: ${mon(i.amount)}\nالمبلغ المدفوع الآن: ${mon(p.amount)}\nالمتبقي من القسط: ${mon(lf)}\n${lf<=0.005?'✅ تم سداد القسط بالكامل':'دفعة جزئية'}`
   const R=({l,v,b})=><div className="row"><span className="mu">{l}</span>{b?<b>{v}</b>:<span>{v}</span>}</div>
   return <>
-    <div className="noprint">{canPrint&&<button className="p sm" onClick={()=>window.print()}>طباعة الفاتورة</button>} <button className="sm" onClick={close}>إغلاق</button></div>
+    <div className="noprint">{canPrint&&<><button className="p sm" onClick={()=>window.print()}>طباعة الفاتورة</button> <PdfBtn name={'إيصال-'+c.name+'-'+p.id.slice(0,6)}/> <button className="sm" onClick={()=>wa(txt)}>إرسال نص واتساب</button></>} <button className="sm" onClick={close}>إغلاق</button></div>
     <div className="card receipt" style={{marginTop:8}}>
       <h1 style={{textAlign:'center'}}>{SHOP}</h1><div className="mu" style={{textAlign:'center'}}>{MGR}</div><h2 style={{textAlign:'center',margin:'10px 0'}}>إيصال استلام دفعة</h2>
       <R l="رقم الإيصال" v={p.id.slice(0,8).toUpperCase()}/>
@@ -243,8 +249,8 @@ function Detail({me,cs,c,back,reload}){
   const seqOf=id=>c.installments.find(i=>i.id===id)?.seq
   const lastPay=id=>{const l=log.find(x=>x.installment_id===id);return l?new Date(l.paid_at).toLocaleDateString('en-GB'):'—'}
   async function pay(i){
-    const a=+(amt[i.id]??fm(left(i)))
-    if(!(a>0)||a>left(i)+0.005){alert('المبلغ لازم يكون أكبر من صفر وغير أكبر من المتبقي ('+fm(left(i))+')');return}
+    const a=+(amt[i.id]??(HIDE?'':fm(left(i))))
+    if(!(a>0)||a>left(i)+0.005){alert('المبلغ لازم يكون أكبر من صفر وغير أكبر من المتبقي'+(HIDE?'':' ('+fm(left(i))+')'));return}
     const {error}=await supabase.rpc('pay_installment',{p_installment:i.id,p_amount:a})
     if(error){alert(error.message);return}
     setAmt({...amt,[i.id]:undefined})
@@ -257,23 +263,25 @@ function Detail({me,cs,c,back,reload}){
     if(error)alert(error.message);else{await reload();back()}
   }
   const n=nextInst(c),rem=remOf(c)
+  const em={ok:'✅',late:'🔴',soon:'🟡',nx:'⏳'}
+  const ctxt=`*${SHOP}*\n${MGR}\n\nكشف حساب العميل: ${c.name}\nنوع المنتج: ${c.product||'—'}\nالإجمالي: ${mon(c.total)}\nالمدفوع: ${mon(c.total-rem)}\nالمتبقي: ${mon(rem)}\nالقسط القادم: ${n?n.due_date:'مسدد'}\n\nالأقساط:\n${c.installments.map(i=>{const s=status(i);return `${i.seq}) ${i.due_date} — ${mon(i.amount)} — ${em[s[1]]} ${s[0]}`}).join('\n')}`
   return <>
-    <div className="noprint"><button className="sm" onClick={back}>رجوع</button> {canPrint&&<button className="sm p" onClick={()=>window.print()}>طباعة تقرير العميل</button>}</div>
+    <div className="noprint"><button className="sm" onClick={back}>رجوع</button> {canPrint&&<><button className="sm p" onClick={()=>window.print()}>طباعة تقرير العميل</button> <PdfBtn name={'كشف-حساب-'+c.name}/> <button className="sm" onClick={()=>wa(ctxt)}>إرسال نص واتساب</button></>}</div>
     <PrintHead t={'تقرير العميل: '+c.name}/>
     <div className="card" style={{marginTop:8}}><h2>{c.name} <span className="mu">{c.phone}</span></h2>
       {c.product&&<p className="mu">نوع المنتج: <b>{c.product}</b></p>}<IdImage path={c.image_path}/>
-      <div className="grid"><Stat l="المبلغ الأصلي" v={mon(c.principal)}/><Stat l="النسبة المضافة" v={c.rate+'%'}/><Stat l="قيمة النسبة" v={mon(c.total-c.principal)}/><Stat l="الإجمالي بعد النسبة" v={mon(c.total)}/>
+      <div className="grid"><Stat l="المبلغ الأصلي" v={mon(c.principal)}/><Stat l="النسبة المضافة" v={HIDE?'•••':c.rate+'%'}/><Stat l="قيمة النسبة" v={mon(c.total-c.principal)}/><Stat l="الإجمالي بعد النسبة" v={mon(c.total)}/>
       <Stat l="المقدم" v={mon(c.down)}/><Stat l="إجمالي المدفوع" v={mon(c.total-rem)}/><Stat l="المتبقي" v={mon(rem)} c="var(--rd)"/><Stat l="القسط القادم" v={n?n.due_date:'—'}/></div></div>
     <div className="card tw"><table><thead><tr><th>#</th><th>الاستحقاق</th><th>القسط</th><th>المدفوع</th><th>المتبقي</th><th>آخر دفعة</th><th>الحالة</th>{canPay&&<th className="noprint">تسجيل دفعة</th>}</tr></thead><tbody>
       {c.installments.map(i=>{const s=status(i);return <tr key={i.id}>
         <td>{i.seq}</td><td>{i.due_date}</td><td>{mon(i.amount)}</td><td>{mon(i.paid)}</td><td>{mon(left(i))}</td><td>{lastPay(i.id)}</td>
         <td><span className={'tag '+s[1]}>{s[0]}</span></td>
-        {canPay&&<td className="noprint">{left(i)>0.005?<><input type="number" min="0" value={amt[i.id]??fm(left(i))} onChange={e=>setAmt({...amt,[i.id]:e.target.value})}/> <button className="sm p" onClick={()=>pay(i)}>دفع</button></>:'✓'}</td>}</tr>})}
+        {canPay&&<td className="noprint">{left(i)>0.005?<><input type="number" min="0" placeholder="المبلغ" value={amt[i.id]??(HIDE?'':fm(left(i)))} onChange={e=>setAmt({...amt,[i.id]:e.target.value})}/> <button className="sm p" onClick={()=>pay(i)}>دفع</button></>:'✓'}</td>}</tr>})}
     </tbody></table></div>
     <div className="card"><h2>سجل الدفعات</h2>
       {log.map(l=><div className="row" key={l.id}><span>{new Date(l.paid_at).toLocaleDateString('en-GB')} · قسط {seqOf(l.installment_id)}</span><span><b>{mon(l.amount)}</b> {canPrint&&<button className="sm noprint" onClick={()=>setRc(l)}>فاتورة</button>}</span></div>)}
       {!log.length&&<p className="mu">لا توجد دفعات بعد.</p>}</div>
-    <div className="noprint">{can(me,'edit')&&<button onClick={()=>setEditing(true)}>تعديل العميل</button>} {can(me,'delete')&&<button onClick={del} style={{color:'var(--rd)'}}>حذف العميل</button>}</div></>
+    <div className="noprint">{can(me,'edit')&&!HIDE&&<button onClick={()=>setEditing(true)}>تعديل العميل</button>} {can(me,'delete')&&<button onClick={del} style={{color:'var(--rd)'}}>حذف العميل</button>}</div></>
 }
 
 function EditForm({cs,c,close,done}){
@@ -314,14 +322,14 @@ function EditForm({cs,c,close,done}){
     <button className="p" onClick={save} disabled={busy}>{busy?'جاري الحفظ...':'حفظ التعديلات'}</button> <button onClick={close}>إلغاء</button></div>
 }
 
-const PERMS=[['add','إضافة عملاء'],['edit','تعديل'],['pay','تسجيل دفعات'],['delete','حذف'],['print','طباعة تقارير']]
+const PERMS=[['amounts','عرض المبالغ'],['add','إضافة عملاء'],['edit','تعديل'],['pay','تسجيل دفعات'],['delete','حذف'],['print','طباعة تقارير']]
 async function manage(body){
   const {data,error}=await supabase.functions.invoke('manage-users',{body})
   if(error){let m=error.message;try{m=(await error.context.json()).error||m}catch(e){}throw new Error(m)}
   if(data?.error)throw new Error(data.error)
 }
 function Users({me}){
-  const empty={name:'',email:'',password:'',can_add:false,can_edit:false,can_pay:false,can_delete:false,can_print:false}
+  const empty={name:'',email:'',password:'',can_add:false,can_edit:false,can_pay:false,can_delete:false,can_print:false,can_amounts:false}
   const [us,setUs]=useState([]);const [f,setF]=useState(empty);const [busy,setBusy]=useState(false)
   const load=useCallback(async()=>{
     const {data}=await supabase.from('profiles').select('*').order('created_at');setUs(data||[])
@@ -349,4 +357,30 @@ function Users({me}){
         <button className="sm" onClick={()=>{const p=prompt('كلمة المرور الجديدة (6 أحرف على الأقل)');if(p)run(()=>manage({action:'password',id:u.id,password:p}))}}>تغيير كلمة المرور</button>
         <button className="sm" style={{color:'var(--rd)'}} onClick={()=>{if(confirm('حذف المستخدم نهائيًا؟'))run(()=>manage({action:'delete',id:u.id}))}}>حذف</button></div>}
     </div>})}</>
+}
+
+async function toPdf(el){
+  const [{default:html2canvas},{jsPDF}]=await Promise.all([import('html2canvas'),import('jspdf')])
+  const cv=await html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true,windowWidth:900,onclone:d=>d.documentElement.classList.add('pdfmode')})
+  const pdf=new jsPDF('p','mm','a4'),m=8,w=210-2*m,ph=Math.floor((297-2*m)*cv.width/w)
+  for(let y=0,k=0;y<cv.height;y+=ph,k++){
+    const h=Math.min(ph,cv.height-y),sl=document.createElement('canvas');sl.width=cv.width;sl.height=h
+    sl.getContext('2d').drawImage(cv,0,y,cv.width,h,0,0,cv.width,h)
+    if(k)pdf.addPage()
+    pdf.addImage(sl.toDataURL('image/jpeg',0.92),'JPEG',m,m,w,h*w/cv.width)
+  }
+  return pdf.output('blob')
+}
+async function sharePdf(name){
+  const blob=await toPdf(document.querySelector('.wrap'))
+  const file=new File([blob],name+'.pdf',{type:'application/pdf'})
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:name,text:SHOP});return}catch(e){if(e.name==='AbortError')return}
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name+'.pdf';a.click()
+  alert('تم تنزيل ملف PDF. افتح واتساب واختر المحادثة وارفق الملف.')
+}
+function PdfBtn({name,className='sm'}){
+  const [b,setB]=useState(false)
+  return <button className={className} disabled={b} onClick={async()=>{setB(true);try{await sharePdf(name)}catch(e){alert('تعذر إنشاء PDF: '+e.message)}setB(false)}}>{b?'جاري التجهيز...':'إرسال PDF واتساب'}</button>
 }

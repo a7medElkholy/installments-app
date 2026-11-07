@@ -205,3 +205,10 @@ insert into storage.buckets(id,name,public) values('customer-docs','customer-doc
 drop policy if exists docs_read on storage.objects; drop policy if exists docs_write on storage.objects;
 create policy docs_read on storage.objects for select to authenticated using(bucket_id='customer-docs' and has_perm('view'));
 create policy docs_write on storage.objects for insert to authenticated with check(bucket_id='customer-docs' and (has_perm('add') or has_perm('edit')));
+
+-- صلاحية "عرض المبالغ" (الافتراضي: مخفية عن الموظفين)
+alter table profiles add column if not exists can_amounts boolean not null default false;
+create or replace function has_perm(p text) returns boolean language sql security definer stable set search_path=public as $$
+  select coalesce((select active and (role='admin' or case p when 'view' then true when 'add' then can_add when 'edit' then can_edit
+    when 'pay' then can_pay when 'delete' then can_delete when 'print' then can_print when 'amounts' then can_amounts else false end)
+    from profiles where id=auth.uid()),false) $$;

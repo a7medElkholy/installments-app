@@ -32,3 +32,9 @@ npm run dev
 1. شغّل `supabase/migration_users.sql` مرة واحدة من SQL Editor (المستخدم الحالي يصير مديرًا تلقائيًا).
 2. انشر دالة إنشاء المستخدمين: من Dashboard اختر Edge Functions ثم Deploy a new function، سمّها `manage-users` والصق محتوى `supabase/functions/manage-users/index.ts`. (أو بالـ CLI: `supabase functions deploy manage-users`).
 3. سجّل دخول بحساب المالك وستجد تبويب "المستخدمون".
+
+## تحديث (واتساب + إخفاء المبالغ)
+شغّل `supabase/migration_amounts.sql` مرة واحدة، وحدّث دالة `manage-users` بالنسخة الجديدة (أضيف فيها `can_amounts`).
+
+## تحديث (إرسال PDF)
+شغّل `npm install` مرة تانية (أضفنا html2canvas و jspdf).

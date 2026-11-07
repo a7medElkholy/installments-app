@@ -40,3 +40,7 @@ tr.r-late td{background:var(--rdb)}tr.r-soon td{background:var(--orb)}tr.r-ok td
 
 .idimg{max-height:160px;max-width:100%;border-radius:8px;border:1px solid var(--bd);margin:6px 0;display:block}
 .perms{display:flex;gap:12px;flex-wrap:wrap}.perms label{display:flex;align-items:center;gap:4px;margin:0;color:var(--tx);font-size:14px}.perms input{width:auto}
+
+html.pdfmode{--bg:#fff;--card:#fff;--tx:#000;--mu:#444;--bd:#bbb;--pr:#000;--rd:#a00;--rdb:#fcd5d5;--or:#7a4a00;--orb:#ffe9a8;--gr:#0a6b2c;--grb:#d4f1dc;color-scheme:light}
+.pdfmode .noprint{display:none!important}.pdfmode .printonly{display:block}
+.pdfmode .wrap{max-width:none}.pdfmode .tw{overflow:visible}.pdfmode table{min-width:0}

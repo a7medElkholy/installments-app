@@ -16,7 +16,7 @@ Deno.serve(async req=>{
       if(!b.email||!b.password||b.password.length<6)return json({error:'الإيميل وكلمة مرور 6 أحرف على الأقل'},400)
       const {data,error}=await admin.auth.admin.createUser({email:b.email,password:b.password,email_confirm:true})
       if(error)return json({error:error.message},400)
-      const {error:e2}=await admin.from('profiles').update({name:b.name||b.email,role:'staff',can_add:!!b.can_add,can_edit:!!b.can_edit,can_pay:!!b.can_pay,can_delete:!!b.can_delete,can_print:!!b.can_print}).eq('id',data.user.id)
+      const {error:e2}=await admin.from('profiles').update({name:b.name||b.email,role:'staff',can_add:!!b.can_add,can_edit:!!b.can_edit,can_pay:!!b.can_pay,can_delete:!!b.can_delete,can_print:!!b.can_print,can_amounts:!!b.can_amounts}).eq('id',data.user.id)
       if(e2)return json({error:e2.message},400)
       return json({ok:true})
     }
